@@ -21,7 +21,7 @@ export type NewsArticle = {
 
 export type VespaResult<InnerType> = {
     root: {
-        children: InnerType[],
+        children?: InnerType[],
         fields: {
             totalCount: number,
         },
