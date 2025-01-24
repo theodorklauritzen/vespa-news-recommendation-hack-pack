@@ -1,0 +1,11 @@
+
+
+schema category_ctr {
+    
+    document category_ctr {
+        field ctrs type tensor<float>(category{}) {
+            indexing: attribute
+            attribute: fast-search
+        }
+    }
+}

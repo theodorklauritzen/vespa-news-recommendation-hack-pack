@@ -1,4 +1,9 @@
 
+export type Embedding = {
+    type: string,
+    values: number[],
+}
+
 export type NewsFields = {
     abstract: string,
     category: string,
@@ -13,18 +18,19 @@ export type NewsFields = {
     url: string,
 }
 
-export type NewsArticle = {
+export type VespaChild<InnerType> = {
     id: string,
     relevance: number,
-    fields: NewsFields,
+    fields: InnerType,
 }
 
 export type VespaResult<InnerType> = {
     root: {
-        children?: InnerType[],
+        children?: VespaChild<InnerType>[],
         fields: {
             totalCount: number,
         },
         id: string,
+        errors?: any[]
     }
 }

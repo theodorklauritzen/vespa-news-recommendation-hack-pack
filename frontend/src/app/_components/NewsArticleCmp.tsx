@@ -1,12 +1,12 @@
 "use client"
 
-import type { NewsArticle } from "@/api/Types"
+import type { NewsFields, VespaChild } from "@/api/Types"
 import styles from "./NewsArticleCmp.module.css"
 
 export default function NewsArticleCmp({
   article
 }: {
-  article: NewsArticle
+  article: VespaChild<NewsFields>
 }) {
 
   return <div className={styles.article}>

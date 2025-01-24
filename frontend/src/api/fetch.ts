@@ -1,31 +1,56 @@
 "use server"
 
-import { NewsArticle, VespaResult } from "./Types"
+import { Embedding, NewsFields, VespaResult } from "./Types"
 
 const VESPA_HOSTNAME = 'http://localhost:8080'
 
 async function queryVespa<InnerType>(yql: string, options?: {
     query?: string,
     ranking?: string,
-}): Promise<VespaResult<InnerType>> {
+} & Record<string, string>): Promise<VespaResult<InnerType>> {
+    console.log(yql)
     let url = `${VESPA_HOSTNAME}/search/?yql=${encodeURIComponent(yql)}`
     if (options) {
-        if (options.query) {
-            url += `&query=${options.query}`
-        }
-        if (options.ranking) {
-            url += `&ranking=${options.ranking}`
+        Object.keys(options).forEach(key => {
+            url += `&${key}=${encodeURIComponent(options[key])}`
+        })
+    }
+    console.log(url)
+    try {
+        const response = await fetch(url)
+        const jsonResponse = await response.json()
+        return jsonResponse as VespaResult<InnerType>
+    } catch (e) {
+        console.error(e)
+        return {
+            root: {
+                id: '',
+                fields: {
+                    totalCount: 0
+                }
+            }
         }
     }
-    const response = await fetch(url)
-    const jsonResponse = await response.json()
-    return jsonResponse as VespaResult<InnerType>
 }
 
 export async function simpleSearch(query: string) {
     return await queryVespa("select * from news where userQuery()", {
         query,
         ranking: "popularity"
-    }) as VespaResult<NewsArticle>
+    }) as VespaResult<NewsFields>
 
+}
+
+export async function getUsersIds() {
+    return await queryVespa("select user_id, embedding from user where true limit 30") as VespaResult<{
+        user_id: string,
+        embedding: Embedding,
+    }>
+}
+
+export async function recommendArticles(userEmbedding: Embedding, targetHits: number) {
+    return await queryVespa(`select * from news where ({targetHits:${targetHits}}nearestNeighbor(embedding, user_embedding))`, {
+        "ranking.features.query(user_embedding)": `[${userEmbedding.values.join(",")}]`,
+        ranking: "recommendation"
+    }) as VespaResult<NewsFields>
 }

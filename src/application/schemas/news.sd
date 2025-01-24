@@ -10,6 +10,9 @@ schema news {
         field category type string {
             indexing: summary | attribute
         }
+        field category_tensor type tensor<float>(category{}) {
+            indexing: attribute
+        }
         field subcategory type string {
             indexing: summary | attribute
         }
@@ -40,7 +43,13 @@ schema news {
                 distance-metric: dotproduct
             }
         }
+
+        field category_ctr_ref type reference<category_ctr> {
+            indexing: attribute
+        }
     }
+
+    import field category_ctr_ref.ctrs as global_category_ctrs {}
 
     fieldset default {
         fields: title, abstract
@@ -58,6 +67,24 @@ schema news {
     rank-profile recommendation inherits default {
         first-phase {
             expression: closeness(field, embedding)
+        }
+    }
+
+    rank-profile recommendation_with_global_category_ctr inherits recommendation {
+        function category_ctr() {
+            expression: sum(attribute(category_tensor) * attribute(global_category_ctrs))
+        }
+        function nearest_neighbor() {
+            expression: closeness(field, embedding)
+        }
+        first-phase {
+            expression: nearest_neighbor * category_ctr
+        }
+        summary-features {
+            attribute(category_tensor)
+            attribute(global_category_ctrs)
+            category_ctr
+            nearest_neighbor
         }
     }
 }
