@@ -55,6 +55,3 @@ def mrr(preds, labels):
         ]
     )
     return round(mean_mrr, 4)
-
-
-
