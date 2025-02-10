@@ -3,7 +3,7 @@ from vespa.application import Vespa
 import torch
 from torch.utils.data import DataLoader, TensorDataset, RandomSampler
 
-class NewsData:
+class NewsData:#
 
     def __init__(self, impressions_file):
 
@@ -16,6 +16,8 @@ class NewsData:
         self.news_content = {}
 
         self.__impression_file = impressions_file
+
+        self.fecthData()
 
     def fecthData(self):
         with self.app.syncio() as session:
@@ -49,6 +51,8 @@ class NewsData:
                 'abstract': newsObj['abstract']
             }
 
+        print(self.news_content)
+
         
         with open(self.__impression_file) as file:
             fileType = self.__impression_file.split('.')[-1].lower()
@@ -56,14 +60,20 @@ class NewsData:
             for line in file.readlines():
                 lineId, userId, date, history, impressions = [ i.strip() for i in line.split(splitChr) ]
                 
-                news_indicies, labels = self.find_labels(impressions.split(" "), history.split(" "))
+                news_indices, labels = self.find_labels(impressions.split(" "), history.split(" "))
                 self.train_impressions.append({
                     'user_index': self.lookup_user_index(userId),
-                    'news_indicies': news_indicies,
+                    'news_indices': news_indices,
                     'labels': labels
                 })
 
         print(self.train_impressions)
+
+    def users(self):
+        return self.user_map
+
+    def news(self):
+        return self.news_map
 
     def fillDataDict(self, dataDict, data):
         for i in range(len(data)):
@@ -90,31 +100,48 @@ class NewsData:
             map[id] = len(map)
         return map[id]
 
-    def sampleTrainingData(self, batch_size, num_negatives, prob=1.0):
+    def sample_training_data(self, batch_size, num_negatives, prob=1.0):
 
-        userIndicies = []
-        newsIdicies = []
+        userIndices = []
+        newsIndices = []
         labels = []
 
         for impression in self.train_impressions:
             if random.random() <= prob:
-                self.addImpression(impression, userIndicies, newsIdicies, labels, num_negatives)
+                self.addImpression(impression, userIndices, newsIndices, labels, num_negatives)
 
         dataSet = TensorDataset(
-            torch.LongTensor(userIndicies),
-            torch.LongTensor(newsIdicies),
+            torch.LongTensor(userIndices),
+            torch.LongTensor(newsIndices),
             torch.FloatTensor(labels)
         )
         generator = torch.Generator()
         randomSampler = RandomSampler(dataSet, generator=generator)
         return DataLoader(dataSet, batch_size=batch_size, sampler=randomSampler)
 
+    # TODO: This need to be created to validate the results
+    def sample_valid_data(self, prob=1.0, train=False):
+        data = []
+        impressions = self.train_impressions #if train else self.valid_impressions
+        for impression in impressions:
+            if random.random() <= prob:
+                news_indices = impression["news_indices"]
+                labels = impression["labels"]
+                user_index = [ impression["user_index"] ] * len(labels)
+                if sum(labels) > 0 and sum(labels) != len(labels):
+                    data.append([
+                        torch.LongTensor(user_index),
+                        torch.LongTensor(news_indices),
+                        torch.FloatTensor(labels)
+                    ])
+        return data
+
     # Convert training data, to three different lists.
     # Each row in userIndicies and NewsIndicies includes an id
     # The corresponding row in labels, label if the article was clicked on or skipped
     def addImpression(self, impression, userIndicies, newsIndicies, labels, num_negatives):
         userIndex = impression['user_index']
-        positive, negative = self.findClicked(impression['news_indicies'], impression['labels'])
+        positive, negative = self.findClicked(impression['news_indices'], impression['labels'])
         # Positive = news that the user clicked on
         # Negative = news that the user skipped
 
@@ -139,3 +166,12 @@ class NewsData:
                 skipped.append(news_id)
 
         return clicked, skipped
+
+    def get_news_content_tensors(self):
+        num_docs = len(self.news_map)
+        news_indices = [0] * num_docs
+
+        for news_index in self.news().values():
+            news_indices[news_index] = news_index
+
+        return torch.LongTensor(news_indices)

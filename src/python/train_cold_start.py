@@ -6,11 +6,13 @@ import os
 import sys
 import numpy
 import random
+from createBertEmbedding import createBertEmbedding
 import torch
 import numpy as np
 from tqdm import tqdm
 
 from mind_data import MindData
+from newsData import NewsData
 from metrics import ndcg, mrr, group_auc
 
 
@@ -67,9 +69,9 @@ class ContentBasedModel(torch.nn.Module):
         dot_prod = torch.sum(torch.mul(user_embeddings, news_embeddings), 1)
         return torch.sigmoid(dot_prod)
 
-    def save_weights(self):
-        print(f"Writing weights to {linear_weights_file}")
-        torch.save(self.news_bert_transform, linear_weights_file)
+    def save_weights(self, filename=linear_weights_file):
+        print(f"Writing weights to {filename}")
+        torch.save(self.news_bert_transform, filename)
 
     def load_weights(self):
         print(f"Loading weights from {linear_weights_file}")
@@ -83,7 +85,8 @@ def train_epoch(model, sample_data, epoch, optimizer, criterion):
     for batch_num, batch in enumerate(tqdm(sample_data)):
 
         # get the inputs - data is a user_id and news_id which looks up the embedding, and a label
-        user_ids, news_ids, category_ids, subcategory_ids, entities, labels = batch
+        # user_ids, news_ids, category_ids, subcategory_ids, entities, labels = batch
+        user_ids, news_ids, labels = batch
 
         # zero to parameter gradients
         optimizer.zero_grad()
@@ -100,10 +103,11 @@ def train_epoch(model, sample_data, epoch, optimizer, criterion):
     print("Total loss after epoch {}: {} ({} avg)".format(epoch+1, total_loss, total_loss / len(sample_data)))
 
 
-def train_model(model, data_loader):
+def train_model(model, data_loader, should_save=True):
     criterion = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=adam_lr, weight_decay=l2_regularization)
     best_auc_eval = 0.0
+    bestWeights = model.state_dict()
     for epoch in range(epochs):
 
         # create data for this epoch
@@ -118,12 +122,15 @@ def train_model(model, data_loader):
 
         # save embeddings if better auc - TODO
         if auc_eval > best_auc_eval:
-            print(f"New best eval AUC: {auc_eval}. Saving embeddings.")
-            save_embeddings(model, data_loader)
-            model.save_weights()
+            if should_save:
+                print(f"New best eval AUC: {auc_eval}. Saving embeddings.")
+                save_embeddings(model, data_loader)
+                model.save_weights()
 
-            best_auc_eval = auc_eval
+                best_auc_eval = auc_eval
+            bestWeights = model.state_dict()
 
+    model.load_state_dict(bestWeights)
 
 def eval_model(model, data_loader, sample_prob=1.0, train=False):
     sample_data = data_loader.sample_valid_data(sample_prob, train=train)
@@ -133,7 +140,8 @@ def eval_model(model, data_loader, sample_prob=1.0, train=False):
         all_labels = []
 
         for impression in sample_data:  # make an iterator instead
-            user_ids, news_ids, category_ids, subcategory_ids, entities, labels = impression
+            # user_ids, news_ids, category_ids, subcategory_ids, entities, labels = impression
+            user_ids, news_ids, labels = impression
             prediction = model(user_ids, news_ids).view(-1)
 
             all_predictions.append(prediction.detach().numpy())
@@ -154,7 +162,8 @@ def save_embeddings(model, data_loader):
     user_map = data_loader.users()
     news_map = data_loader.news()
     users = torch.LongTensor(range(len(user_map)))
-    news, cats, subcats, entities = data_loader.get_news_content_tensors()
+    # news, cats, subcats, entities = data_loader.get_news_content_tensors()
+    news = data_loader.get_news_content_tensors()
     user_embeddings = model.get_user_embeddings(users)
     news_embeddings = model.get_news_embeddings(news)
     write_embeddings(user_map, user_embeddings, "user_embeddings.tsv")
@@ -213,7 +222,7 @@ def main():
 
     # create model
     model = ContentBasedModel(num_users, num_news, embedding_size, bert_embeddings)
-    model.load_weights()
+    # model.load_weights()
 
     # train model
     train_model(model, data_loader)

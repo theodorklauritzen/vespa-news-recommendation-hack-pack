@@ -3,6 +3,7 @@ import json
 import sys
 from vespa.application import Vespa
 
+from createBertEmbedding import createBertEmbedding
 from transformers import logging, BertTokenizer, BertModel
 import torch
 
@@ -79,39 +80,18 @@ def convertDataToVespa(data):
 
     return ret
 
-# TODO: Use the class used for the mindDataset
-class BertTransformer(torch.nn.Module):
-    def __init__(self):
-        super(BertTransformer, self).__init__()
-        self.news_bert_transform = torch.nn.Linear(512, 50)
+def createNewsEmbedding(data, linearLayerFilename):
+    bertTransformerModel = torch.load(linearLayerFilename)
+    bertTransformerModel.eval()
 
-    def loadWeights(self, filename):
-        state_dict = torch.load(filename)
+    if (bertTransformerModel.in_features != 512 or bertTransformerModel.out_features != 50):
+        print("The model needs to have 512 in_features and 50 out_features.")
+        exit(1)
 
-        self.news_bert_transform.weight.copy_(state_dict['news_bert_transform.weight'])
-        self.news_bert_transform.bias.copy_(state_dict['news_bert_transform.bias'])
+    bertEmbeddings = createBertEmbedding(data)
 
-    def forward(self, bert_embedding):
-        return self.news_bert_transform(bert_embedding)
-
-
-def createNewsEmbedding(data):
-    # TODO: Create BERT embedding
-    # Pass the bert embedding through the NN 
-
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model = BertModel.from_pretrained('google/bert_uncased_L-8_H-512_A-8')
-
-    bertTransformerModel = BertTransformer()
-    # bertTransformerModel.loadWeights("tmp.tbh")
-
-    for datapoint in data:
-        title = datapoint["title"]
-        abstract = datapoint["abstract"]
-
-        tokens = tokenizer(title, abstract, return_tensors="pt", max_length=100, truncation=True, padding=True)
-        outputs = model(**tokens)
-        embedding512 = outputs[0][0][0]
+    for i, datapoint in enumerate(data):
+        embedding512 = bertEmbeddings[i]
         embedding50 = bertTransformerModel.forward(embedding512)
         datapoint["embedding"] = embedding50.tolist()
 
@@ -126,7 +106,10 @@ def vespaCallback(response, id):
         print("Feed successful")
 
 def main():
-    data = getInputData() if (len(sys.argv) < 2) else readFile(sys.argv[1])
+    if (len(sys.argv) < 2):
+        print("Usage: <linearLayerWeights> [file_with_news]")
+        return
+    data = getInputData() if (len(sys.argv) < 3) else readFile(sys.argv[2])
 
     if type(data) != list:
         data = [data]
@@ -135,7 +118,7 @@ def main():
         if not validateData(datapoint):
             return
 
-    data = createNewsEmbedding(data)
+    data = createNewsEmbedding(data, sys.argv[1])
 
     dataToVespa = convertDataToVespa(data)
 
