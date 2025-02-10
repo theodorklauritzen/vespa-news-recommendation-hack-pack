@@ -12,13 +12,13 @@ from transformers import logging, BertTokenizer, BertModel
 
 logging.set_verbosity_error()
 
-data_dir = sys.argv[1]
+data_dir = sys.argv[1] if len(sys.argv) > 1 else "./mind"
 doc_type = "mind"
 
 train_news_file = os.path.join(data_dir, "train", "news.tsv")
-train_embedding_file = os.path.join(data_dir, "train", "news_embeddings.tsv")
+train_embedding_file = os.path.join(data_dir, "train", "news_embeddings_bert.tsv")
 dev_news_file = os.path.join(data_dir, "dev", "news.tsv")
-dev_embedding_file = os.path.join(data_dir, "dev", "news_embeddings.tsv")
+dev_embedding_file = os.path.join(data_dir, "dev", "news_embeddings_bert.tsv")
 
 field_list = ["docid", "category", "subcategory", "title", "abstract", "url", "title_entities", "abstract_entities"]
 

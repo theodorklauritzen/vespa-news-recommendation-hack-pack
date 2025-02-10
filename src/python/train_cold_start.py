@@ -16,8 +16,9 @@ from newsData import NewsData
 from metrics import ndcg, mrr, group_auc
 
 
-data_dir = sys.argv[1] if len(sys.argv) > 1 else "../../mind/"
-epochs = int(sys.argv[2]) if len(sys.argv) > 2 else 15
+data_dir = sys.argv[1] if len(sys.argv) > 1 else "./mind/"
+embedding_dir = sys.argv[2] if len(sys.argv) > 2 else "./embeddings"
+epochs = int(sys.argv[3]) if len(sys.argv) > 3 else 15
 
 train_news_file = os.path.join(data_dir, "train", "news.tsv")
 valid_news_file = os.path.join(data_dir, "dev", "news.tsv")
@@ -28,7 +29,7 @@ valid_embeddings_file = os.path.join(data_dir, "dev", "news_embeddings.tsv")
 train_bert_embeddings_file = os.path.join(data_dir, "train", "news_embeddings_bert.tsv")
 valid_bert_embeddings_file = os.path.join(data_dir, "dev", "news_embeddings_bert.tsv")
 
-linear_weights_file = os.path.join(data_dir, "news_bert_transform.pt")
+linear_weights_file = os.path.join(embedding_dir, "news_bert_transform.pt")
 
 # hyperparameters
 embedding_size = 50
@@ -73,7 +74,7 @@ class ContentBasedModel(torch.nn.Module):
         print(f"Writing weights to {filename}")
         torch.save(self.news_bert_transform, filename)
 
-    def load_weights(self):
+    def load_weights(self, linear_weights_file):
         print(f"Loading weights from {linear_weights_file}")
         self.news_bert_transform = torch.load(linear_weights_file)
 
@@ -171,7 +172,7 @@ def save_embeddings(model, data_loader):
 
 
 def write_embeddings(id_to_index_map, embeddings, file_name):
-    with open(os.path.join(data_dir, file_name), "w") as f:
+    with open(os.path.join(embedding_dir, file_name), "w") as f:
         for id, index in id_to_index_map.items():
             f.write("{}\t{}\n".format(id, ",".join(["%.6f" % i for i in embeddings[index].tolist()])))
 
@@ -222,7 +223,9 @@ def main():
 
     # create model
     model = ContentBasedModel(num_users, num_news, embedding_size, bert_embeddings)
-    # model.load_weights()
+
+    # to load weights
+    # model.load_weights(linear_weights_file)
 
     # train model
     train_model(model, data_loader)
