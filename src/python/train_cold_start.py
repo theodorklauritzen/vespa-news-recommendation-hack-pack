@@ -27,7 +27,7 @@ valid_embeddings_file = os.path.join(data_dir, "dev", "news_embeddings.tsv")
 train_bert_embeddings_file = os.path.join(data_dir, "train", "news_embeddings_bert.tsv")
 valid_bert_embeddings_file = os.path.join(data_dir, "dev", "news_embeddings_bert.tsv")
 
-linear_weights_file = os.path.join(data_dir, "news_bert_transform.pt")
+linear_weights_file = os.path.join(embedding_dir, "news_bert_transform.pt")
 
 # hyperparameters
 embedding_size = 50
@@ -72,7 +72,7 @@ class ContentBasedModel(torch.nn.Module):
         print(f"Writing weights to {linear_weights_file}")
         torch.save(self.news_bert_transform, linear_weights_file)
 
-    def load_weights(self):
+    def load_weights(self, linear_weights_file):
         print(f"Loading weights from {linear_weights_file}")
         self.news_bert_transform = torch.load(linear_weights_file)
 
@@ -214,6 +214,9 @@ def main():
 
     # create model
     model = ContentBasedModel(num_users, num_news, embedding_size, bert_embeddings)
+
+    # to load weights
+    # model.load_weights(linear_weights_file)
 
     # train model
     train_model(model, data_loader)
