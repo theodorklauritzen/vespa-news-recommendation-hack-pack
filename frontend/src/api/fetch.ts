@@ -54,3 +54,9 @@ export async function recommendArticles(userEmbedding: Embedding, targetHits: nu
         ranking: "recommendation"
     }) as VespaResult<NewsFields>
 }
+
+export async function popularNews() {
+    return await queryVespa("select * from news where true limit 20", {
+        ranking: 'popularity'
+    }) as VespaResult<NewsFields>
+}
