@@ -14,8 +14,9 @@ from mind_data import MindData
 from metrics import ndcg, mrr, group_auc
 
 
-data_dir = sys.argv[1] if len(sys.argv) > 1 else "../../mind/"
-epochs = int(sys.argv[2]) if len(sys.argv) > 2 else 15
+data_dir = sys.argv[1] if len(sys.argv) > 1 else "./mind/"
+embedding_dir = sys.argv[2] if len(sys.argv) > 2 else "./embeddings"
+epochs = int(sys.argv[3]) if len(sys.argv) > 3 else 15
 
 train_news_file = os.path.join(data_dir, "train", "news.tsv")
 valid_news_file = os.path.join(data_dir, "dev", "news.tsv")
@@ -162,7 +163,7 @@ def save_embeddings(model, data_loader):
 
 
 def write_embeddings(id_to_index_map, embeddings, file_name):
-    with open(os.path.join(data_dir, file_name), "w") as f:
+    with open(os.path.join(embedding_dir, file_name), "w") as f:
         for id, index in id_to_index_map.items():
             f.write("{}\t{}\n".format(id, ",".join(["%.6f" % i for i in embeddings[index].tolist()])))
 
@@ -213,7 +214,6 @@ def main():
 
     # create model
     model = ContentBasedModel(num_users, num_news, embedding_size, bert_embeddings)
-    model.load_weights()
 
     # train model
     train_model(model, data_loader)
