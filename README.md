@@ -37,3 +37,25 @@ Downlod the python requirements
 
 `vespa deploy src/application`
 
+# Super quick start
+
+```bash
+uv sync
+source .venv/bin/activate
+cd src/application
+vespa config set target local
+docker run --detach --name vespa --hostname vespa-container \
+  --publish 8080:8080 --publish 19071:19071 \
+  vespaengine/vespa
+vespa status deploy --wait 300 # Check if deployment api is ready
+vespa deploy
+cd ../..
+vespa feed embeddings/vespa_user_embeddings.json --target http://localhost:8080
+vespa feed embeddings/vespa_news_embeddings.json --target http://localhost:8080
+cd frontend
+npm install
+npm run dev
+# See sample users and recommendations in the application
+```
+
+## Training
