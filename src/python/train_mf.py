@@ -7,19 +7,7 @@ import numpy
 import random
 import torch
 
-from mind_data import MindData
 from metrics import ndcg, mrr, group_auc
-
-
-data_dir = sys.argv[1] if len(sys.argv) > 1 else "../../mind/"
-epochs = int(sys.argv[2]) if len(sys.argv) > 2 else 100
-
-train_news_file = os.path.join(data_dir, "train", "news.tsv")
-valid_news_file = os.path.join(data_dir, "dev", "news.tsv")
-train_impressions_file = os.path.join(data_dir, "train", "behaviors.tsv")
-valid_impressions_file = os.path.join(data_dir, "dev", "behaviors.tsv")
-train_embeddings_file = os.path.join(data_dir, "train", "news_embeddings.tsv")
-valid_embeddings_file = os.path.join(data_dir, "dev", "news_embeddings.tsv")
 
 # hyperparameters
 embedding_size = 50
@@ -65,7 +53,7 @@ def train_epoch(model, sample_data, epoch, optimizer, loss_function):
     print("Total loss after epoch {}: {} ({} avg)".format(epoch+1, total_loss, total_loss / len(sample_data)))
 
 
-def train_model(model, data_loader):
+def train_model(model, data_loader, epochs = 10):
     loss_func = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=adam_lr, weight_decay=l2_regularization)
     for epoch in range(epochs):

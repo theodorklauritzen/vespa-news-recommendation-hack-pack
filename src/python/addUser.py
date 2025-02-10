@@ -1,6 +1,7 @@
 
 import sys
 from vespa.application import Vespa
+import numpy as np
 
 
 def main():
@@ -17,6 +18,7 @@ def main():
         data_id=userId,
         fields={
             "user_id": userId,
+            "embedding": np.random.uniform(-1, 1, 50).tolist()
         }
     )
     if (response.is_successful()):
