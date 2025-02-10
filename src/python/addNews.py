@@ -1,11 +1,12 @@
-
+import os
 import json
 import sys
+import time
 from vespa.application import Vespa
 
 from createBertEmbedding import createBertEmbedding
-from transformers import logging, BertTokenizer, BertModel
 import torch
+
 
 EXPECTED_FIELDS = ["news_id", "category", "url", "date", "subcategory", "title", "abstract"]
 
@@ -80,20 +81,25 @@ def convertDataToVespa(data):
 
     return ret
 
-def createNewsEmbedding(data, linearLayerFilename):
-    bertTransformerModel = torch.load(linearLayerFilename)
+def createNewsEmbedding(data, modelPath, printStats = True):
+    bertTransformerModel = torch.load(modelPath)
     bertTransformerModel.eval()
 
     if (bertTransformerModel.in_features != 512 or bertTransformerModel.out_features != 50):
         print("The model needs to have 512 in_features and 50 out_features.")
         exit(1)
 
-    bertEmbeddings = createBertEmbedding(data)
+    bertEmbeddings = createBertEmbedding(data, printStats)
 
+    t = time.time()
     for i, datapoint in enumerate(data):
         embedding512 = bertEmbeddings[i]
         embedding50 = bertTransformerModel.forward(embedding512)
         datapoint["embedding"] = embedding50.tolist()
+
+        if len(data) > 100 and printStats and i % (len(data)//100) == (len(data)//100 - 1):
+            print("Completed {} embeddings convertion ({:.0f} %) [{:.2f} s]".format(i + 1, 100.0 *(i+1)/len(data), time.time()-t))
+            t = time.time()
 
     return data
 
@@ -118,7 +124,8 @@ def main():
         if not validateData(datapoint):
             return
 
-    data = createNewsEmbedding(data, sys.argv[1])
+    print("Creating embeddings")
+    data = createNewsEmbedding(data, sys.argv[1], True)
 
     dataToVespa = convertDataToVespa(data)
 
