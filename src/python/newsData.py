@@ -43,15 +43,18 @@ class NewsData:
         self.fillDataDict(self.news_map, newsIds)
 
         for news in newsResponseJson:
-            self.news_content[news['news_id']] = {
-                'title': news['title'],
-                'abstract': news['abstract']
+            newsObj = news['fields']
+            self.news_content[newsObj['news_id']] = {
+                'title': newsObj['title'],
+                'abstract': newsObj['abstract']
             }
 
         
         with open(self.__impression_file) as file:
+            fileType = self.__impression_file.split('.')[-1].lower()
+            splitChr = ',' if fileType == 'csv' else '\t'
             for line in file.readlines():
-                lineId, userId, history, impressions = [ i.strip() for i in line.split(',') ]
+                lineId, userId, date, history, impressions = [ i.strip() for i in line.split(splitChr) ]
                 
                 news_indicies, labels = self.find_labels(impressions.split(" "), history.split(" "))
                 self.train_impressions.append({
