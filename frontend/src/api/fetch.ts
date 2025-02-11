@@ -19,6 +19,7 @@ async function queryVespa<InnerType>(yql: string, options?: {
     try {
         const response = await fetch(url)
         const jsonResponse = await response.json()
+        console.log(jsonResponse)
         return jsonResponse as VespaResult<InnerType>
     } catch (e) {
         console.error(e)

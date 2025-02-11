@@ -40,8 +40,6 @@ schema news {
                 distance-metric: dotproduct
             }
         }
-        field lastEmbeddingCreation type int {
-        }
     }
 
     fieldset default {

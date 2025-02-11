@@ -1,3 +1,4 @@
+import json
 import sys
 from newsData import NewsData
 from train_cold_start import ContentBasedModel, train_model, embedding_size, set_random_seed
@@ -9,17 +10,21 @@ def vespaCallback(response, id):
     if not response.is_successful():
         print("Failed to feed to Vespa")
         print(response.get_json())
+        print(id)
 
 def convertToVespaFormat(schema, idToIndexMap, embeddings):
     ret = []
 
     for id, index in idToIndexMap.items():
-        ret.append({
-            "id": f"id:{schema}:{schema}::{id}",
-            "fields": {
-                "embedding": embeddings[index].tolist(),
-            }
-        })
+        if id is None:
+            print(id, index)
+        else:
+            ret.append({
+                "update": id,
+                "fields": {
+                    "embedding": embeddings[index].tolist()
+                }
+            })
 
     return ret
 
@@ -36,12 +41,14 @@ def updateEmbeddings(data_loader, model):
     app.feed_iterable(
         convertToVespaFormat("news", news_map, news_embeddings),
         schema="news",
+        operation_type="update",
         callback=vespaCallback
     )
 
     app.feed_iterable(
         convertToVespaFormat("user", user_map, user_embeddings),
         schema="user",
+        operation_type="update",
         callback=vespaCallback
     )
 
