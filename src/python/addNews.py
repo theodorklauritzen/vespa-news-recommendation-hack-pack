@@ -82,9 +82,7 @@ def convertDataToVespa(data):
 
     return ret
 
-def createNewsEmbedding(data, modelPath, printStats = True):
-    bertTransformerModel = torch.load(modelPath)
-    bertTransformerModel.eval()
+def createNewsEmbedding(data, bertTransformerModel, printStats = True):
 
     if (bertTransformerModel.in_features != 512 or bertTransformerModel.out_features != 50):
         print("The model needs to have 512 in_features and 50 out_features.")
@@ -110,8 +108,8 @@ def vespaCallback(response, id):
         print("Failed to feed to Vespa")
         print(response.get_json())
 
-def processsBatch(data):
-    data = createNewsEmbedding(data, sys.argv[1], False)
+def processsBatch(data, model):
+    data = createNewsEmbedding(data, model, False)
 
     dataToVespa = convertDataToVespa(data)
 
@@ -124,7 +122,7 @@ def processsBatch(data):
 
 def main():
     if (len(sys.argv) < 2):
-        print("Usage: <linearLayerWeights> [file_with_news]")
+        print("Usage: <nn_model_file> [file_with_news]")
         return
     data = getInputData() if (len(sys.argv) < 3) else readFile(sys.argv[2])
 
@@ -134,14 +132,19 @@ def main():
     for datapoint in data:
         if not validateData(datapoint):
             return
-    
+
+    bertTransformerModel = torch.load(sys.argv[1], weights_only=False)
+    bertTransformerModel.eval()
+
     i = 0
     t = time.time()
     print("Processing data in batches...")
     while i < len(data):
-        processsBatch(data[i:min(i + BATCH_SIZE, len(data))])
+        processsBatch(data[i:min(i + BATCH_SIZE, len(data))], bertTransformerModel)
         i += BATCH_SIZE
-        print(f"Uploaded {i}/{len(data)} ({(i / len(data) * 100):.2f}%) in {time.time() - t:.2f}s")
+
+        if (len(data) > BATCH_SIZE):
+            print(f"Uploaded {i}/{len(data)} ({(i / len(data) * 100):.2f}%) in {time.time() - t:.2f}s")
 
 if __name__ == "__main__":
     main()
