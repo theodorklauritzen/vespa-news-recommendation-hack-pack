@@ -1,43 +1,24 @@
+# Vespa News Search and Recommendations
 
+This is a Hack Pack for TreeHacks 2025, it shows how to do basic search and recommendations using Vespa.
 
-
-
-´docker run --rm -it --publish 8080:8080 --publish 19071:19071 --name vespaNews test´
-
-'docker cp vespaNews:/app/mind ./mind'
-
-
-# Finished Demo
-
-Just download the Docker image here: asdf asdf asdf ad
-
-Run the web server
+## Requirements
+- [Docker](https://www.docker.com/) or [Podman](https://podman.io/)
+- [Vespa CLI](https://docs.vespa.ai/en/vespa-cli.html)
+- [Python >= 3.12](https://www.python.org/)
+- [Node](https://nodejs.org/en) for the frontend
+- [git-lfs](https://git-lfs.com/) for pulling the dataset
 
 # Set up locally
 
-## Download the dataset
+Clone the repo:
+```
+git clone https://github.com/theodorklauritzen/vespa-news-recommendation-hack-pack.git
+```
 
-Run the command `./sample-apps/news/bin/download-mind.sh demo`
+## Super quick start
 
-## Download python requirements
-
-Downlod the python requirements
-`pip install -r ./sample-apps/news/requirements.txt`
-
-## Start a new vespa container
-
-`docker run --detach --publish 8080:8080 --publish 19071:19071 --name vespa vespaengine/vespa`
-
-## Download vespa cli
-
-[Vespa CLI](https://docs.vespa.ai/en/vespa-cli.html)
-
-
-## Deploy the application
-
-`vespa deploy src/application`
-
-# Super quick start
+This will use pretrained embeddings for users and news.
 
 ```bash
 uv sync
@@ -57,5 +38,6 @@ npm install
 npm run dev
 # See sample users and recommendations in the application
 ```
+
 
 ## Training

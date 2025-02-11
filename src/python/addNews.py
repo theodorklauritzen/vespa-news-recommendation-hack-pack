@@ -9,6 +9,7 @@ import torch
 
 
 EXPECTED_FIELDS = ["news_id", "category", "url", "date", "subcategory", "title", "abstract"]
+BATCH_SIZE = 500
 
 def validateData(data):
     for field in EXPECTED_FIELDS:
@@ -108,8 +109,18 @@ def vespaCallback(response, id):
     if not response.is_successful():
         print("Failed to feed to Vespa")
         print(response.get_json())
-    else:
-        print("Feed successful")
+
+def processsBatch(data):
+    data = createNewsEmbedding(data, sys.argv[1], False)
+
+    dataToVespa = convertDataToVespa(data)
+
+    app = Vespa(url = "http://localhost/", port = 8080)
+    app.feed_iterable(
+        dataToVespa,
+        schema="news",
+        callback=vespaCallback
+    )
 
 def main():
     if (len(sys.argv) < 2):
@@ -123,18 +134,14 @@ def main():
     for datapoint in data:
         if not validateData(datapoint):
             return
-
-    print("Creating embeddings")
-    data = createNewsEmbedding(data, sys.argv[1], True)
-
-    dataToVespa = convertDataToVespa(data)
-
-    app = Vespa(url = "http://localhost/", port = 8080)
-    app.feed_iterable(
-        dataToVespa,
-        schema="news",
-        callback=vespaCallback
-    )
+    
+    i = 0
+    t = time.time()
+    print("Processing data in batches...")
+    while i < len(data):
+        processsBatch(data[i:min(i + BATCH_SIZE, len(data))])
+        i += BATCH_SIZE
+        print(f"Uploaded {i}/{len(data)} ({(i / len(data) * 100):.2f}%) in {time.time() - t:.2f}s")
 
 if __name__ == "__main__":
     main()
