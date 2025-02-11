@@ -148,9 +148,9 @@ class MindData:
         data_set = TensorDataset(
                         torch.LongTensor(user_indices),
                         torch.LongTensor(news_indices),
-                        torch.LongTensor(category_indices),
-                        torch.LongTensor(subcategory_indices),
-                        torch.LongTensor(entity_indices),
+                        # torch.LongTensor(category_indices),
+                        # torch.LongTensor(subcategory_indices),
+                        # torch.LongTensor(entity_indices),
                         torch.FloatTensor(labels))
         generator = torch.Generator()
         random_sampler = RandomSampler(data_set, generator=generator)
@@ -171,9 +171,9 @@ class MindData:
                     data.append([
                         torch.LongTensor(user_index),
                         torch.LongTensor(news_indices),
-                        torch.LongTensor(category_indices),
-                        torch.LongTensor(subcategory_indices),
-                        torch.LongTensor(entity_indices),
+                        # torch.LongTensor(category_indices),
+                        # torch.LongTensor(subcategory_indices),
+                        # torch.LongTensor(entity_indices),
                         torch.FloatTensor(labels)
                     ])
         return data
@@ -223,7 +223,8 @@ class MindData:
             subcategory_indices[news_index] = content["subcategory_index"]
             entity_indices[news_index] = content["entity_index"]
 
-        return torch.LongTensor(news_indices), \
-               torch.LongTensor(category_indices), \
-               torch.LongTensor(subcategory_indices),\
-               torch.LongTensor(entity_indices),
+        return torch.LongTensor(news_indices)
+               # torch.LongTensor(category_indices), \
+               # torch.LongTensor(subcategory_indices),\
+               # torch.LongTensor(entity_indices),
+
