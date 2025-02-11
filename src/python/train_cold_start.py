@@ -18,7 +18,8 @@ from metrics import ndcg, mrr, group_auc
 
 data_dir = sys.argv[1] if len(sys.argv) > 1 else "./mind/"
 embedding_dir = sys.argv[2] if len(sys.argv) > 2 else "./embeddings"
-epochs = int(sys.argv[3]) if len(sys.argv) > 3 else 15
+# epochs = int(sys.argv[3]) if len(sys.argv) > 3 else 15
+epochs = 15
 
 train_news_file = os.path.join(data_dir, "train", "news.tsv")
 valid_news_file = os.path.join(data_dir, "dev", "news.tsv")
@@ -46,6 +47,7 @@ class ContentBasedModel(torch.nn.Module):
 
         # Embedding tables for category variables
         self.user_embeddings = torch.nn.Embedding(num_embeddings=num_users, embedding_dim=embedding_size)
+        print(self.user_embeddings)
 
         # Pretrained BERT embeddings
         self.news_bert_embeddings = torch.nn.Embedding.from_pretrained(bert_embeddings, freeze=True)
@@ -77,9 +79,6 @@ class ContentBasedModel(torch.nn.Module):
     def load_weights(self, linear_weights_file):
         print(f"Loading weights from {linear_weights_file}")
         self.news_bert_transform = torch.load(linear_weights_file)
-
-
-
 
 def train_epoch(model, sample_data, epoch, optimizer, criterion):
     total_loss = 0
@@ -130,6 +129,8 @@ def train_model(model, data_loader, should_save=True):
 
                 best_auc_eval = auc_eval
             bestWeights = model.state_dict()
+        else:
+            break
 
     model.load_state_dict(bestWeights)
 

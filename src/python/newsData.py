@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, TensorDataset, RandomSampler
 
 class NewsData:#
 
-    def __init__(self, impressions_file):
+    def __init__(self, train_impressions_file, valid_impressions_file):
 
         self.app = Vespa(url = "http://localhost/", port = 8080)
         self.news_map = {}
@@ -15,7 +15,8 @@ class NewsData:#
 
         self.news_content = {}
 
-        self.__impression_file = impressions_file
+        self.__train_impression_file = train_impressions_file
+        self.__valid_impression_file = valid_impressions_file
 
         self.fecthData()
 
@@ -23,7 +24,8 @@ class NewsData:#
         with self.app.syncio() as session:
 
             userResponse = session.query(
-                yql="select user_id from user where true"
+                yql="select user_id from user where true",
+                queryProfile="manyHits",
             )
 
             if (not userResponse.is_successful()):
@@ -31,7 +33,8 @@ class NewsData:#
                 return
 
             newsResponse = session.query(
-                yql="select news_id, title, abstract from news where true"
+                yql="select news_id, title, abstract from news where true",
+                queryProfile="manyHits",
             )
 
             if (not newsResponse.is_successful()):
@@ -47,27 +50,26 @@ class NewsData:#
         for news in newsResponseJson:
             newsObj = news['fields']
             self.news_content[newsObj['news_id']] = {
-                'title': newsObj['title'],
-                'abstract': newsObj['abstract']
+                'title': newsObj['title'] if 'title' in newsObj else '',
+                'abstract': newsObj['abstract'] if 'abstract' in newsObj else ''
             }
 
-        print(self.news_content)
-
-        
-        with open(self.__impression_file) as file:
-            fileType = self.__impression_file.split('.')[-1].lower()
+        self.readImpressionFile(self.__train_impression_file, self.train_impressions)
+        self.readImpressionFile(self.__valid_impression_file, self.valid_impressions)
+    
+    def readImpressionFile(self, filename, store):
+        with open(filename) as file:
+            fileType = filename.split('.')[-1].lower()
             splitChr = ',' if fileType == 'csv' else '\t'
             for line in file.readlines():
                 lineId, userId, date, history, impressions = [ i.strip() for i in line.split(splitChr) ]
                 
                 news_indices, labels = self.find_labels(impressions.split(" "), history.split(" "))
-                self.train_impressions.append({
+                store.append({
                     'user_index': self.lookup_user_index(userId),
                     'news_indices': news_indices,
                     'labels': labels
                 })
-
-        print(self.train_impressions)
 
     def users(self):
         return self.user_map
@@ -122,7 +124,7 @@ class NewsData:#
     # TODO: This need to be created to validate the results
     def sample_valid_data(self, prob=1.0, train=False):
         data = []
-        impressions = self.train_impressions #if train else self.valid_impressions
+        impressions = self.train_impressions if train else self.valid_impressions
         for impression in impressions:
             if random.random() <= prob:
                 news_indices = impression["news_indices"]
@@ -169,9 +171,5 @@ class NewsData:#
 
     def get_news_content_tensors(self):
         num_docs = len(self.news_map)
-        news_indices = [0] * num_docs
 
-        for news_index in self.news().values():
-            news_indices[news_index] = news_index
-
-        return torch.LongTensor(news_indices)
+        return torch.LongTensor(range(0, num_docs))

@@ -1,0 +1,5 @@
+<query-profile id="manyHits" inherits="default">
+    <field name="hits">30000</field>
+    <field name="maxHits">40000</field>
+    <field name="timeout">15</field>
+</query-profile>

@@ -93,7 +93,7 @@ def createNewsEmbedding(data, bertTransformerModel, printStats = True):
     t = time.time()
     for i, datapoint in enumerate(data):
         embedding512 = bertEmbeddings[i]
-        embedding50 = bertTransformerModel.forward(embedding512)
+        embedding50 = torch.sigmoid(bertTransformerModel.forward(embedding512))
         datapoint["embedding"] = embedding50.tolist()
 
         if len(data) > 100 and printStats and i % (len(data)//100) == (len(data)//100 - 1):
