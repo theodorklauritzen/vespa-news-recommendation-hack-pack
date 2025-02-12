@@ -12,19 +12,16 @@ def vespaCallback(response, id):
         print(response.get_json())
         print(id)
 
-def convertToVespaFormat(schema, idToIndexMap, embeddings):
+def convertToVespaFormat(idToIndexMap, embeddings):
     ret = []
 
     for id, index in idToIndexMap.items():
-        if id is None:
-            print(id, index)
-        else:
-            ret.append({
-                "update": id,
-                "fields": {
-                    "embedding": embeddings[index].tolist()
-                }
-            })
+        ret.append({
+            "id": id,
+            "fields": {
+                "embedding": embeddings[index].tolist()
+            }
+        })
 
     return ret
 
@@ -39,14 +36,14 @@ def updateEmbeddings(data_loader, model):
     news_embeddings = model.get_news_embeddings(news)
 
     app.feed_iterable(
-        convertToVespaFormat("news", news_map, news_embeddings),
+        convertToVespaFormat(news_map, news_embeddings),
         schema="news",
         operation_type="update",
         callback=vespaCallback
     )
 
     app.feed_iterable(
-        convertToVespaFormat("user", user_map, user_embeddings),
+        convertToVespaFormat(user_map, user_embeddings),
         schema="user",
         operation_type="update",
         callback=vespaCallback
