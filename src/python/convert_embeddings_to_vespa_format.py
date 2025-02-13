@@ -22,6 +22,8 @@ news_embeddings_file = os.path.join(embedding_dir, "news_embeddings.tsv")
 user_embeddings_vespa = os.path.join(embedding_dir, "vespa_user_embeddings.json")
 news_embeddings_vespa = os.path.join(embedding_dir, "vespa_news_embeddings.json")
 
+train_news_bert_embeddings_file = os.path.join(data_dir, "train", "news_embeddings_bert.tsv")
+dev_news_bert_embeddings_file = os.path.join(data_dir, "dev", "news_embeddings_bert.tsv")
 train_news_file = os.path.join(data_dir, "train", "news.tsv")
 dev_news_file = os.path.join(data_dir, "dev", "news.tsv")
 train_impressions_file = os.path.join(data_dir, "train", "behaviors.tsv")
@@ -83,8 +85,8 @@ def read_impressions_file(file_name, click_map):
                 if label == "1":
                     click_map[news_id]["clicks"] += 1
 
-def get_news_embeddings():
-    news_embeddings = read_embeddings(news_embeddings_file)
+def get_news_embeddings(embeddings_file):
+    news_embeddings = read_embeddings(embeddings_file)
     news_id_to_vespa_embedding = {}
     for news_id, embedding in news_embeddings.items():
         embedding_str = {"values": ["%.6f" % v for v in embedding]}
@@ -97,7 +99,8 @@ def convert_file(output, file_name, docids, click_map):
         sys.exit(1)
     print("Reading news data from " + file_name)
 
-    news_id_to_vespa_embedding = get_news_embeddings()
+    news_id_to_vespa_recommendation_embedding = get_news_embeddings(news_embeddings_file)
+    news_id_to_vespa_bert_embedding = get_news_embeddings(train_news_bert_embeddings_file) if "train" in file_name else get_news_embeddings(dev_news_bert_embeddings_file)
 
     with io.open(file_name, "r", encoding="utf-8") as f:
 
@@ -119,20 +122,22 @@ def convert_file(output, file_name, docids, click_map):
             doc = {"put": f"id:{doc_type}:{doc_type}::{docid}", "fields" : {} }
             for field in include_fields:
                 doc["fields"][field] = line[field]
-            doc["fields"]["date"] = generate_random_date()  # data set does not include a publish date
             doc["fields"]["clicks"] = clicks
             doc["fields"]["impressions"] = impressions
-            if docid in news_id_to_vespa_embedding:
-                doc["fields"]["embedding"] = news_id_to_vespa_embedding[docid]
+            if docid in news_id_to_vespa_recommendation_embedding:
+                doc["fields"]["embedding"] = news_id_to_vespa_recommendation_embedding[docid]
             else:
                 print(f"Warning: no embedding found for {docid}")
+
+            if docid in news_id_to_vespa_bert_embedding:
+                doc["fields"]["bert_embedding"] = news_id_to_vespa_bert_embedding[docid]
+            else:
+                print(f"Warning: no BERT embedding found for {docid}")
             json.dump(doc, output)
 
 def generate_random_date():
     random_date = dt.fromtimestamp(random.randint(1572562800, 1573686000))
     return int(dt.strftime(random_date, "%Y%m%d"))
-
-
 
 def main():
     click_map = defaultdict(lambda: {"clicks":0,"impressions":0})
