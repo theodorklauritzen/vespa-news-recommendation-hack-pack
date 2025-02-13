@@ -225,9 +225,6 @@ def main():
     # create model
     model = ContentBasedModel(num_users, num_news, embedding_size, bert_embeddings)
 
-    # to load weights
-    # model.load_weights(linear_weights_file)
-
     # train model
     train_model(model, data_loader)
 

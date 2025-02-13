@@ -11,11 +11,6 @@ schema user {
         field embedding type tensor<float>(d0[50]) {
             indexing: summary | attribute
         }
-
-        field has_read_items type array<string> {
-            indexing: summary | attribute
-        }
-
     }
 
 }

@@ -76,7 +76,6 @@ def main():
 
     # create model
     model = ContentBasedModel(num_users, num_news, embedding_size, bert_embeddings)
-    # model.load_weights()
 
     # train model
     train_model(model, data_loader, False)

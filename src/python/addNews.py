@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-EXPECTED_FIELDS = ["news_id", "category", "url", "date", "subcategory", "title", "abstract"]
+EXPECTED_FIELDS = ["news_id", "category", "url", "subcategory", "title", "abstract"]
 BATCH_SIZE = 500
 
 def validateData(data):
@@ -50,7 +50,6 @@ def readTSVFile(filename):
                 "title": title,
                 "abstract": abstract,
                 "url": url,
-                "date": "20250127"
             })
 
     return ret
@@ -105,7 +104,7 @@ def createNewsEmbedding(data, bertTransformerModel, printStats = True):
     return data
 
 
-def vespaCallback(response, id):
+def vespaCallback(response, _):
     if not response.is_successful():
         print("Failed to feed to Vespa")
         print(response.get_json())

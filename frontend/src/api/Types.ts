@@ -8,7 +8,6 @@ export type NewsFields = {
     abstract: string,
     category: string,
     clicks: number,
-    date: number,
     documentid: string,
     impressions: number,
     news_id: string,

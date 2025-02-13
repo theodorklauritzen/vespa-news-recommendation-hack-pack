@@ -60,7 +60,7 @@ def main():
 
     userId = sys.argv[2]
 
-    app = Vespa(url = "http://localhost/", port = 8080)
+    app = Vespa(url = os.getenv("VESPA_URL", "http://localhost/"), port = int(os.getenv("VESPA_PORT", 8080)))
 
     response = app.feed_data_point(
         schema="user",
