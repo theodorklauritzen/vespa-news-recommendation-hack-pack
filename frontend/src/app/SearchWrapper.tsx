@@ -2,7 +2,7 @@
 import { Embedding, NewsFields, VespaChild, VespaResult } from "@/api/Types";
 import { useState } from "react";
 import NewsResults from "./_components/NewsResults";
-import { popularNews, recommendArticles, simpleSearch } from "@/api/fetch";
+import { popularNews, recommendArticles, semanticSearch, simpleSearch } from "@/api/fetch";
 import styles from "./SearchWrapper.module.css";
 import { v4 } from "uuid";
 
@@ -37,6 +37,12 @@ export default function SearchWrapper({
     setResults(results)
   }
 
+  const semanticSearchForm = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const results = await semanticSearch(searchWord)
+    setResults(results)
+  }
+
   const recommendationSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     const user = users[selectedUser]
@@ -51,10 +57,12 @@ export default function SearchWrapper({
 
   return <div>
     <div className={styles.searchbar}>
-      <form onSubmit={textMatchSearch}>
+      <div>
         <input type="text" value={searchWord} onChange={(e) => setSearchWord(e.target.value)} />
-        <input type="submit" value="Text Match Search" />
-      </form>
+        <br />
+        <button onClick={textMatchSearch}>Text Match Search</button>
+        <button onClick={semanticSearchForm}>Semantic Search</button>
+      </div>
 
       <form onSubmit={recommendationSearch}>
         <select value={selectedUser} onChange={(e) => setSelectedUser(parseInt(e.target.value))}>

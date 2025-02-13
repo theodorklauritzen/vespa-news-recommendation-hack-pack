@@ -39,8 +39,14 @@ export async function simpleSearch(query: string) {
         query,
         ranking: "popularity"
     }) as VespaResult<NewsFields>
-
 }
+
+export async function semanticSearch(query: string) {
+    return await queryVespa("select * from news where userQuery()", {
+        query,
+        ranking: "nativeRank"
+    }) as VespaResult<NewsFields>
+} 
 
 export async function getUsersIds() {
     return await queryVespa("select user_id, embedding from user where true limit 30") as VespaResult<{

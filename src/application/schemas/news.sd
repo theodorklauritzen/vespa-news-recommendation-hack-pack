@@ -56,4 +56,10 @@ schema news {
             expression: closeness(field, embedding)
         }
     }
+
+    rank-profile nativeRank inherits default {
+        first-phase {
+             expression:  nativeRank(title, abstract)
+        }
+    }
 }
