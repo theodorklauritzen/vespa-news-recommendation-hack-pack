@@ -1,16 +1,16 @@
 
 
 .searchbar {
-  input, select {
+  input, select, button {
     font-size: 1.3rem;
   }
 
-  form, >input {
+  form, >input, >div {
     display: flex;
     justify-content: center;
   }
 
-  form {
+  form, >div {
     width: 100%;
     margin: 0.5rem 0 0.5rem 0;
   }

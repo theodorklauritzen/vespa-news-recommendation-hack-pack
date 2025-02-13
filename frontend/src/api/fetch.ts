@@ -37,9 +37,7 @@ async function queryVespa<InnerType>(yql: string, options?: {
 export async function simpleSearch(query: string) {
     return await queryVespa("select * from news where userQuery()", {
         query,
-        ranking: "popularity"
     }) as VespaResult<NewsFields>
-
 }
 
 export async function getUsersIds() {
@@ -56,8 +54,9 @@ export async function recommendArticles(userEmbedding: Embedding, targetHits: nu
     }) as VespaResult<NewsFields>
 }
 
-export async function popularNews() {
-    return await queryVespa("select * from news where true limit 20", {
+export async function popularNews(query: string) {
+    return await queryVespa("select * from news where userQuery() limit 20", {
+        query,
         ranking: 'popularity'
     }) as VespaResult<NewsFields>
 }

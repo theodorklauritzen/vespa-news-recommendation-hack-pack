@@ -45,16 +45,18 @@ export default function SearchWrapper({
   }
 
   const popularitySearch = async () => {
-    const results = await popularNews()
+    const results = await popularNews(searchWord)
     setResults(results)
   }
 
   return <div>
     <div className={styles.searchbar}>
-      <form onSubmit={textMatchSearch}>
+      <div>
         <input type="text" value={searchWord} onChange={(e) => setSearchWord(e.target.value)} />
-        <input type="submit" value="Text Match Search" />
-      </form>
+        <br />
+        <button onClick={textMatchSearch}>Text Match Search</button>
+        <button onClick={popularitySearch}>Popular Search</button>
+      </div>
 
       <form onSubmit={recommendationSearch}>
         <select value={selectedUser} onChange={(e) => setSelectedUser(parseInt(e.target.value))}>
@@ -62,8 +64,6 @@ export default function SearchWrapper({
         </select>
         <input type="submit" value="Find recommended articles" />
       </form>
-
-      <input type="submit" onClick={popularitySearch} value="Popular News" />
 
       {feedbackMessage !== null &&
         <p>{feedbackMessage}</p>
