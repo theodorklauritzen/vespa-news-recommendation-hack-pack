@@ -1,106 +1,108 @@
 # Vespa News Search and Recommendations
 
-This is a Hack Pack for TreeHacks 2025, it shows how to do basic search and recommendations using Vespa.
+This Hack Pack for TreeHacks 2025 demonstrates basic search and recommendation functionality using Vespa. It is based on Vespa's [News Search and Recommendation tutorial](https://docs.vespa.ai/en/tutorials/news-1-getting-started.html) but has been simplified and modified.
 
-The recommendation system works by calculating a BERT embedding for the news. This embedding is fed through an embedding to reduce the size to 50. Each user also has an embedding. When we calculate the embeddings for the news and user we want to train the neural network and the user embeddings. We want the dotproduct between the news embedding and a user embedding to give a score on how good the user and news article matches.
+![Image of the frontend of the application](screenshot.png)
+
+## Overview
+
+This recommendation system uses embeddings for users and news articles. To recommend articles, we calculate the distance between user and article embeddings using a dot product. A higher dot product value indicates a better match.
+
+To generate embeddings for a news article:
+1. A BERT model creates an initial 512-dimensional embedding.
+2. A neural network reduces it to 50 dimensions.
+
+This approach allows us to create news embeddings without recalculating all other embeddings, since we only need to train the neural network and the user embeddings.
+
+As example data, we use the [MIND dataset](https://msnews.github.io/), which contains news articles and user interactions (clicks and skips). Clicks are treated as positive interactions, while skips indicate weak recommendations.
 
 ## Requirements
 - [Docker](https://www.docker.com/) or [Podman](https://podman.io/)
 - [Vespa CLI](https://docs.vespa.ai/en/vespa-cli.html)
-- [UV](https://docs.astral.sh/uv/getting-started/installation/) python package and project manager or [Python >= 3.12](https://www.python.org/)
-- [Node](https://nodejs.org/en) for the frontend
-- [git-lfs](https://git-lfs.com/) for pulling the dataset
+- [UV](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager) or [Python >= 3.12](https://www.python.org/)
+- [Node.js](https://nodejs.org/en) (for the frontend)
+- [git-lfs](https://git-lfs.com/) (To download pretrained embeddings)
 
-# Set up locally
+## Setup Instructions
 
-Clone the repo:
+### Clone the Repository
 ```bash
 git clone https://github.com/theodorklauritzen/vespa-news-recommendation-hack-pack.git
 ```
 
-Start a Vespa container using Docker
+### Start Vespa Container
 ```bash
 docker run --detach --name vespa --hostname vespa-container \
   --publish 8080:8080 --publish 19071:19071 \
   vespaengine/vespa
 ```
 
-Deploy the Vespa Application
+### Deploy the Vespa Application
 ```bash
 vespa config set target local
 vespa status deploy --wait 300
 vespa deploy src/application
 ```
 
-Start the fontend
+### Start the Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-The frontend should now be available on [http://localhost:3000/](http://localhost:3000/).
+The frontend will be available at [http://localhost:3000/](http://localhost:3000/).
 
-## Feed data to Vespa
+## Feeding Data to Vespa
 
-The fastest way is to feed pretrained data to Vespa.
-First make sure that the the large files are downloaded, if not run
+To load pretrained data into Vespa:
 ```bash
 git lfs pull
-```
-Then feed the pretrained data to Vespa
-```bash
 vespa feed embeddings/vespa_user_embeddings.json --target http://localhost:8080
 vespa feed embeddings/vespa_news_embeddings.json --target http://localhost:8080
 ```
 Users and news should now be available in the frontend.
 
-If you want to feed and train the model yourself, look at the section bellow.
-
-## Download the dataset
-
-To be able to feed the data yourself, download the dataset by running this command.
+### Download the Dataset
+To manually process data, download the dataset:
 ```bash
 ./src/sh/download_mind.sh demo
 ```
-The dataset should now be stored in a folder called `mind`.
+This creates a `mind` directory with the dataset.
 
-## Feed and manipulate data with python
-
-Setup the python environment using
-
+### Set Up Python Environment
 ```bash
 uv sync
 source .venv/bin/activate
 ```
+Copy `default.env` to `.env` and update it if your Vespa instance runs on a different host.
 
-Then copy the `default.env` file to a new file called `.env` to setup the environment variables for the python scripts. Change the `.env` file if your Vespa instance if running somewhere else than localhost.
-
-### Add users
-
+### Adding Users
 ```bash
 python src/python/addUser.py id <user_id>
 ```
-Or by finding user id's from the dataset
+To add users from the dataset:
 ```bash
 python src/python/addUser.py mind/train/behaviors.tsv
 ```
 
-New users will start with a random embedding. To give recommendations we need to calculate a new embedding for all users.
-
-### Add news
-
-To add a simple news article run the following command, without any file with news.
+### Adding News Articles
+To add a single news article:
 ```bash
-python src/python/addNews.py embeddings/news_bert_transform.pt [file_with_news]
+python src/python/addNews.py embeddings/news_bert_transform.pt
 ```
 
-To upload news from the data set use the file `mind/train/news.tsv`.
-
-### Calculate new recommendations
-
-To calculate new embeddings for users and news, run the following command
+To add articles from the dataset:
 ```bash
-python src/python/calculateRecommendations.py mind/train/behaviors.tsv mind/dev/behaviours.tsv embeddings/news_bert_transform.pt
+python src/python/addNews.py embeddings/news_bert_transform.pt mind/train/news.tsv
 ```
-This will use the interactions from the first file to train the model to find the best embeddings. The second file is for validation of the model. The last file is where the weights to transform bert embeddings to news embeddings will be stored after the training. These weights must be stored to easily add new articles and calculate their embedding.
 
+### Generating Recommendations
+To compute new embeddings for users and news:
+```bash
+python src/python/calculateRecommendations.py mind/train/behaviors.tsv mind/dev/behaviors.tsv embeddings/news_bert_transform.pt
+```
+- The first file is for training.
+- The second file is for validation.
+- The last file stores transformation weights for future news embeddings.
+
+If a user interacts with more articles, add the interactions to `mind/dev/behaviors.tsv`.
