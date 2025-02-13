@@ -6,15 +6,20 @@ import os
 import sys
 import numpy
 import random
+from createBertEmbedding import createBertEmbedding
 import torch
 import numpy as np
+from tqdm import tqdm
 
 from mind_data import MindData
+from newsData import NewsData
 from metrics import ndcg, mrr, group_auc
 
 
-data_dir = sys.argv[2] if len(sys.argv) > 2 else "../../mind/"
-epochs = int(sys.argv[3]) if len(sys.argv) > 3 else 15
+data_dir = sys.argv[1] if len(sys.argv) > 1 else "./mind/"
+embedding_dir = sys.argv[2] if len(sys.argv) > 2 else "./embeddings"
+# epochs = int(sys.argv[3]) if len(sys.argv) > 3 else 15
+epochs = 15
 
 train_news_file = os.path.join(data_dir, "train", "news.tsv")
 valid_news_file = os.path.join(data_dir, "dev", "news.tsv")
@@ -22,6 +27,10 @@ train_impressions_file = os.path.join(data_dir, "train", "behaviors.tsv")
 valid_impressions_file = os.path.join(data_dir, "dev", "behaviors.tsv")
 train_embeddings_file = os.path.join(data_dir, "train", "news_embeddings.tsv")
 valid_embeddings_file = os.path.join(data_dir, "dev", "news_embeddings.tsv")
+train_bert_embeddings_file = os.path.join(data_dir, "train", "news_embeddings_bert.tsv")
+valid_bert_embeddings_file = os.path.join(data_dir, "dev", "news_embeddings_bert.tsv")
+
+linear_weights_file = os.path.join(embedding_dir, "news_bert_transform.pt")
 
 # hyperparameters
 embedding_size = 50
@@ -33,64 +42,57 @@ l2_regularization = 1e-5  # 0.01
 
 
 class ContentBasedModel(torch.nn.Module):
-    def __init__(self, num_users, num_news, num_categories, num_subcategories, num_entities, embedding_size, bert_embeddings):
+    def __init__(self, num_users, num_news, embedding_size, bert_embeddings):
         super(ContentBasedModel, self).__init__()
 
         # Embedding tables for category variables
         self.user_embeddings = torch.nn.Embedding(num_embeddings=num_users, embedding_dim=embedding_size)
-        self.news_embeddings = torch.nn.Embedding(num_embeddings=num_news, embedding_dim=embedding_size)
-        self.cat_embeddings = torch.nn.Embedding(num_embeddings=num_categories, embedding_dim=embedding_size)
-        self.sub_cat_embeddings = torch.nn.Embedding(num_embeddings=num_subcategories, embedding_dim=embedding_size)
-        self.entity_embeddings = torch.nn.Embedding(num_embeddings=num_entities, embedding_dim=embedding_size)
+        print(self.user_embeddings)
 
         # Pretrained BERT embeddings
         self.news_bert_embeddings = torch.nn.Embedding.from_pretrained(bert_embeddings, freeze=True)
 
         # Linear transformation from BERT size to embedding size (512 -> 50)
-        self.news_bert_transform = torch.nn.Linear(bert_embeddings.shape[1], embedding_size)
-
-        # Linear transformation from concatenation of category, subcategory, entity and BERT embedding
-        self.news_content_transform = torch.nn.Linear(in_features=embedding_size*5, out_features=embedding_size)
+        self.news_bert_transform = torch.nn.Linear(in_features=bert_embeddings.shape[1], out_features=embedding_size)
 
     def get_user_embeddings(self, users):
         return self.user_embeddings(users)
 
-    def get_news_embeddings(self, items, categories, subcategories, entities):
+    def get_news_embeddings(self, items):
         # Transform BERT representation to a shorter embedding
         bert_embeddings = self.news_bert_embeddings(items)
         bert_embeddings = self.news_bert_transform(bert_embeddings)
         bert_embeddings = torch.sigmoid(bert_embeddings)
 
-        # Create news content representation by concatenating BERT, category, subcategory and entities
-        cat_embeddings = self.cat_embeddings(categories)
-        news_embeddings = self.news_embeddings(items)
-        sub_cat_embeddings = self.sub_cat_embeddings(subcategories)
-        entity_embeddings_1 = self.entity_embeddings(entities[:,0])
-        news_embedding = torch.cat((news_embeddings, bert_embeddings, cat_embeddings, sub_cat_embeddings, entity_embeddings_1), 1)
-        news_embedding = self.news_content_transform(news_embedding)
-        news_embedding = torch.sigmoid(news_embedding)
+        return bert_embeddings
 
-        return news_embedding
-
-    def forward(self, users, items, categories, subcategories, entities):
+    def forward(self, users, items):
         user_embeddings = self.get_user_embeddings(users)
-        news_embeddings = self.get_news_embeddings(items, categories, subcategories, entities)
+        news_embeddings = self.get_news_embeddings(items)
         dot_prod = torch.sum(torch.mul(user_embeddings, news_embeddings), 1)
         return torch.sigmoid(dot_prod)
 
+    def save_weights(self, filename=linear_weights_file):
+        print(f"Writing weights to {filename}")
+        torch.save(self.news_bert_transform, filename)
+
+    def load_weights(self, linear_weights_file):
+        print(f"Loading weights from {linear_weights_file}")
+        self.news_bert_transform = torch.load(linear_weights_file)
 
 def train_epoch(model, sample_data, epoch, optimizer, criterion):
     total_loss = 0
-    for batch_num, batch in enumerate(sample_data):
+    for batch_num, batch in enumerate(tqdm(sample_data)):
 
         # get the inputs - data is a user_id and news_id which looks up the embedding, and a label
-        user_ids, news_ids, category_ids, subcategory_ids, entities, labels = batch
+        # user_ids, news_ids, category_ids, subcategory_ids, entities, labels = batch
+        user_ids, news_ids, labels = batch
 
         # zero to parameter gradients
         optimizer.zero_grad()
 
         # forward + backward + optimize
-        prediction = model(user_ids, news_ids, category_ids, subcategory_ids, entities)
+        prediction = model(user_ids, news_ids)
         loss = criterion(prediction.view(-1), labels)
         loss.backward()
         optimizer.step()
@@ -101,9 +103,11 @@ def train_epoch(model, sample_data, epoch, optimizer, criterion):
     print("Total loss after epoch {}: {} ({} avg)".format(epoch+1, total_loss, total_loss / len(sample_data)))
 
 
-def train_model(model, data_loader):
+def train_model(model, data_loader, should_save=True):
     criterion = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=adam_lr, weight_decay=l2_regularization)
+    best_auc_eval = 0.0
+    bestWeights = model.state_dict()
     for epoch in range(epochs):
 
         # create data for this epoch
@@ -113,12 +117,22 @@ def train_model(model, data_loader):
         train_epoch(model, sample_data, epoch, optimizer, criterion)
 
         # evaluate every epoch
-        eval_model(model, data_loader, train=True)
-        eval_model(model, data_loader, 1.0)
+        auc_train = eval_model(model, data_loader, train=True)
+        auc_eval  = eval_model(model, data_loader, 1.0)
 
         # save embeddings if better auc - TODO
-        save_embeddings(model, data_loader)
+        if auc_eval > best_auc_eval:
+            if should_save:
+                print(f"New best eval AUC: {auc_eval}. Saving embeddings.")
+                save_embeddings(model, data_loader)
+                model.save_weights()
 
+                best_auc_eval = auc_eval
+            bestWeights = model.state_dict()
+        else:
+            break
+
+    model.load_state_dict(bestWeights)
 
 def eval_model(model, data_loader, sample_prob=1.0, train=False):
     sample_data = data_loader.sample_valid_data(sample_prob, train=train)
@@ -128,34 +142,38 @@ def eval_model(model, data_loader, sample_prob=1.0, train=False):
         all_labels = []
 
         for impression in sample_data:  # make an iterator instead
-            user_ids, news_ids, category_ids, subcategory_ids, entities, labels = impression
-            prediction = model(user_ids, news_ids, category_ids, subcategory_ids, entities).view(-1)
+            # user_ids, news_ids, category_ids, subcategory_ids, entities, labels = impression
+            user_ids, news_ids, labels = impression
+            prediction = model(user_ids, news_ids).view(-1)
 
             all_predictions.append(prediction.detach().numpy())
             all_labels.append(labels.detach().numpy())
 
+        auc = group_auc(all_predictions, all_labels)
         metrics = {
-            "auc": group_auc(all_predictions, all_labels),
+            "auc": auc,
             "mrr": mrr(all_predictions, all_labels),
             "ndcg@5": ndcg(all_predictions, all_labels, 5),
             "ndcg@10": ndcg(all_predictions, all_labels, 10)
         }
         print(metrics)
+    return auc
 
 
 def save_embeddings(model, data_loader):
     user_map = data_loader.users()
     news_map = data_loader.news()
     users = torch.LongTensor(range(len(user_map)))
-    news, cats, subcats, entities = data_loader.get_news_content_tensors()
+    # news, cats, subcats, entities = data_loader.get_news_content_tensors()
+    news = data_loader.get_news_content_tensors()
     user_embeddings = model.get_user_embeddings(users)
-    news_embeddings = model.get_news_embeddings(news, cats, subcats, entities)
+    news_embeddings = model.get_news_embeddings(news)
     write_embeddings(user_map, user_embeddings, "user_embeddings.tsv")
     write_embeddings(news_map, news_embeddings, "news_embeddings.tsv")
 
 
 def write_embeddings(id_to_index_map, embeddings, file_name):
-    with open(os.path.join(data_dir, file_name), "w") as f:
+    with open(os.path.join(embedding_dir, file_name), "w") as f:
         for id, index in id_to_index_map.items():
             f.write("{}\t{}\n".format(id, ",".join(["%.6f" % i for i in embeddings[index].tolist()])))
 
@@ -200,15 +218,15 @@ def main():
     data_loader = MindData(train_news_file, train_impressions_file, valid_news_file, valid_impressions_file)
     num_users = len(data_loader.users())
     num_news = len(data_loader.news())
-    num_categories = len(data_loader.categories())
-    num_subcategories = len(data_loader.subcategories())
-    num_entities = len(data_loader.entities())
 
     # read BERT embeddings
-    bert_embeddings = read_bert_embeddings(data_loader, train_embeddings_file, valid_embeddings_file)
+    bert_embeddings = read_bert_embeddings(data_loader, train_bert_embeddings_file, valid_bert_embeddings_file)
 
     # create model
-    model = ContentBasedModel(num_users, num_news, num_categories, num_subcategories, num_entities, embedding_size, bert_embeddings)
+    model = ContentBasedModel(num_users, num_news, embedding_size, bert_embeddings)
+
+    # to load weights
+    # model.load_weights(linear_weights_file)
 
     # train model
     train_model(model, data_loader)
@@ -216,3 +234,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

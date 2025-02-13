@@ -2,7 +2,7 @@
 import { Embedding, NewsFields, VespaChild, VespaResult } from "@/api/Types";
 import { useState } from "react";
 import NewsResults from "./_components/NewsResults";
-import { recommendArticles, simpleSearch } from "@/api/fetch";
+import { popularNews, recommendArticles, simpleSearch } from "@/api/fetch";
 import styles from "./SearchWrapper.module.css";
 import { v4 } from "uuid";
 
@@ -44,6 +44,11 @@ export default function SearchWrapper({
     setResults(results)
   }
 
+  const popularitySearch = async () => {
+    const results = await popularNews()
+    setResults(results)
+  }
+
   return <div>
     <div className={styles.searchbar}>
       <form onSubmit={textMatchSearch}>
@@ -57,6 +62,8 @@ export default function SearchWrapper({
         </select>
         <input type="submit" value="Find recommended articles" />
       </form>
+
+      <input type="submit" onClick={popularitySearch} value="Popular News" />
 
       {feedbackMessage !== null &&
         <p>{feedbackMessage}</p>

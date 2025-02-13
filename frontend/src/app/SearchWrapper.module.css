@@ -5,11 +5,18 @@
     font-size: 1.3rem;
   }
 
-  form {
+  form, >input {
     display: flex;
     justify-content: center;
+  }
+
+  form {
     width: 100%;
     margin: 0.5rem 0 0.5rem 0;
+  }
+
+  > input {
+    margin: auto;
   }
 
   margin-top: 1rem;

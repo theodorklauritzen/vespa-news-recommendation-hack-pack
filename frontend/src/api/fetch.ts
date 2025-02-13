@@ -19,6 +19,7 @@ async function queryVespa<InnerType>(yql: string, options?: {
     try {
         const response = await fetch(url)
         const jsonResponse = await response.json()
+        console.log(jsonResponse)
         return jsonResponse as VespaResult<InnerType>
     } catch (e) {
         console.error(e)
@@ -52,5 +53,11 @@ export async function recommendArticles(userEmbedding: Embedding, targetHits: nu
     return await queryVespa(`select * from news where ({targetHits:${targetHits}}nearestNeighbor(embedding, user_embedding))`, {
         "ranking.features.query(user_embedding)": `[${userEmbedding.values.join(",")}]`,
         ranking: "recommendation"
+    }) as VespaResult<NewsFields>
+}
+
+export async function popularNews() {
+    return await queryVespa("select * from news where true limit 20", {
+        ranking: 'popularity'
     }) as VespaResult<NewsFields>
 }
