@@ -2,7 +2,7 @@
 
 import { Embedding, NewsFields, VespaResult } from "./Types"
 
-const VESPA_HOSTNAME = 'http://localhost:8080'
+const VESPA_HOSTNAME = `http://${process.env.VESPA_HOST}:${process.env.VESPA_PORT}/`
 
 async function queryVespa<InnerType>(yql: string, options?: {
     query?: string,

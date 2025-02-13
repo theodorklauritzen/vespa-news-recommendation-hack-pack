@@ -2,6 +2,10 @@
 import sys
 from vespa.application import Vespa
 import numpy as np
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def readUserIdsFromFile(filename):
     fileType = filename.split(".")[-1].lower()
@@ -33,7 +37,7 @@ def addUsersFromFile(filename):
     data = convertToVespaData(userIds)
 
     print("Feeding users to Vespa...")
-    app = Vespa(url = "http://localhost/", port = 8080)
+    app = Vespa(url = os.getenv("VESPA_URL", "http://localhost/"), port = int(os.getenv("VESPA_PORT", "8080")))
     app.feed_iterable(
         data,
         schema="user",

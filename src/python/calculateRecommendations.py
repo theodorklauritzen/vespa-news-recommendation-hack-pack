@@ -5,6 +5,10 @@ from train_cold_start import ContentBasedModel, train_model, embedding_size, set
 from createBertEmbedding import createBertEmbedding
 from vespa.application import Vespa
 import torch
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def vespaCallback(response, id):
     if not response.is_successful():
@@ -26,7 +30,7 @@ def convertToVespaFormat(idToIndexMap, embeddings):
     return ret
 
 def updateEmbeddings(data_loader, model):
-    app = Vespa(url = "http://localhost/", port = 8080)
+    app = Vespa(url = os.getenv("VESPA_URL", "http://localhost/"), port = int(os.getenv("VESPA_PORT", "8080")))
 
     user_map = data_loader.users()
     news_map = data_loader.news()

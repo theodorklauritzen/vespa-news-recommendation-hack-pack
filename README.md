@@ -73,6 +73,8 @@ uv sync
 source .venv/bin/activate
 ```
 
+Then copy the `default.env` file to a new file called `.env` to setup the environment variables for the python scripts. Change the `.env` file if your Vespa instance if running somewhere else than localhost.
+
 ### Add users
 
 ```bash
@@ -95,4 +97,10 @@ python src/python/addNews.py embeddings/news_bert_transform.pt [file_with_news]
 To upload news from the data set use the file `mind/train/news.tsv`.
 
 ### Calculate new recommendations
+
+To calculate new embeddings for users and news, run the following command
+```bash
+python src/python/calculateRecommendations.py mind/train/behaviors.tsv mind/dev/behaviours.tsv embeddings/news_bert_transform.pt
+```
+This will use the interactions from the first file to train the model to find the best embeddings. The second file is for validation of the model. The last file is where the weights to transform bert embeddings to news embeddings will be stored after the training. These weights must be stored to easily add new articles and calculate their embedding.
 

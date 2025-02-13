@@ -6,7 +6,9 @@ from vespa.application import Vespa
 
 from createBertEmbedding import createBertEmbedding
 import torch
+from dotenv import load_dotenv
 
+load_dotenv()
 
 EXPECTED_FIELDS = ["news_id", "category", "url", "date", "subcategory", "title", "abstract"]
 BATCH_SIZE = 500
@@ -113,7 +115,7 @@ def processsBatch(data, model):
 
     dataToVespa = convertDataToVespa(data)
 
-    app = Vespa(url = "http://localhost/", port = 8080)
+    app = Vespa(url = os.getenv("VESPA_URL", "http://localhost/"), port = int(os.getenv("VESPA_PORT", "8080")))
     app.feed_iterable(
         dataToVespa,
         schema="news",
